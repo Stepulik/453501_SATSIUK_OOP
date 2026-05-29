@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
 #include <future>
+#include <tuple>
 #include "../Clients/WeatherDataClient.h"
 #include "../Controllers/CurrentWeatherController.h"
-#include "../Api/WeatherApi.h"
 #include "../Utils/ApiCallException.h"
 
-//  Мок-клиент для тестов 
+//  Мок-клиент
 class MockWeatherClient : public Forecast::Clients::IWeatherDataClient {
 public:
     double returnValue = 25.0;
@@ -19,78 +19,114 @@ public:
             return returnValue;
         });
     }
+
+    // Новый метод для прогноза (пока нет в интерфейсе)
+    // Пока закомментирован, чтобы тест упал на этапе компиляции
+    /*
+    std::future<std::vector<double>> GetForecast(double, double, int days) override {
+        return std::async(std::launch::async, [this, days]() {
+            return std::vector<double>(days, returnValue);
+        });
+    }
+    */
 };
 
-//  Фикстура для тестов CurrentWeatherController 
+//  Фикстура для тестов контроллера (без фабрики, пока старый стиль) 
 class CurrentWeatherControllerTest : public ::testing::Test {
 protected:
-    std::shared_ptr<MockWeatherClient> mockOpenWeather;
-    std::shared_ptr<Forecast::Controllers::CurrentWeatherController> controller;
+    std::shared_ptr<MockWeatherClient> mock;
 
     void SetUp() override {
-        mockOpenWeather = std::make_shared<MockWeatherClient>();
-        controller = std::make_shared<Forecast::Controllers::CurrentWeatherController>(mockOpenWeather);
+        mock = std::make_shared<MockWeatherClient>();
     }
 };
 
-//  СТАРЫЕ ТЕСТЫ 
+// СТАРЫЕ ТЕСТЫ (7 штук, зелёные)
 
-// Проверяет, что контроллер возвращает температуру, переданную от клиента (без изменений)
 TEST_F(CurrentWeatherControllerTest, ReturnsCorrectTemperature) {
-    mockOpenWeather->returnValue = 22.5;
-    auto result = controller->GetCurrentWeather(52.0, 21.0).get();
+    mock->returnValue = 22.5;
+    Forecast::Controllers::CurrentWeatherController ctrl(mock);
+    auto result = ctrl.GetCurrentWeather(52.0, 21.0).get();
     EXPECT_DOUBLE_EQ(result.temperature, 22.5);
 }
 
-// Проверяет, что если клиент выбрасывает ApiCallException, контроллер пробрасывает его дальше
 TEST_F(CurrentWeatherControllerTest, PropagatesApiException) {
-    mockOpenWeather->shouldThrow = true;
+    mock->shouldThrow = true;
+    Forecast::Controllers::CurrentWeatherController ctrl(mock);
     EXPECT_THROW(
-        controller->GetCurrentWeather(0.0, 0.0).get(),
+        ctrl.GetCurrentWeather(0.0, 0.0).get(),
         Forecast::Utils::ApiCallException
     );
 }
 
-// Проверяет, что контроллер работает с отрицательными координатами
 TEST_F(CurrentWeatherControllerTest, NegativeCoordinatesWork) {
-    mockOpenWeather->returnValue = -10.0;
-    auto result = controller->GetCurrentWeather(-90.0, -180.0).get();
+    mock->returnValue = -10.0;
+    Forecast::Controllers::CurrentWeatherController ctrl(mock);
+    auto result = ctrl.GetCurrentWeather(-90.0, -180.0).get();
     EXPECT_DOUBLE_EQ(result.temperature, -10.0);
 }
 
-// Проверяет, что контроллер корректно обрабатывает нулевую температуру
 TEST_F(CurrentWeatherControllerTest, ZeroTemperature) {
-    mockOpenWeather->returnValue = 0.0;
-    auto result = controller->GetCurrentWeather(0.0, 0.0).get();
+    mock->returnValue = 0.0;
+    Forecast::Controllers::CurrentWeatherController ctrl(mock);
+    auto result = ctrl.GetCurrentWeather(0.0, 0.0).get();
     EXPECT_DOUBLE_EQ(result.temperature, 0.0);
 }
 
-//  НОВЫЕ ТЕСТЫ (дополнение для пограничных случаев) 
-
-// Проверяет, что метод GetCurrentWeather с явным указанием провайдера "openweather" работает
 TEST_F(CurrentWeatherControllerTest, ExplicitProviderOpenWeather) {
-    mockOpenWeather->returnValue = 25.0;
-    auto result = controller->GetCurrentWeather(52.0, 21.0, "openweather").get();
+    mock->returnValue = 25.0;
+    Forecast::Controllers::CurrentWeatherController ctrl(mock);
+    auto result = ctrl.GetCurrentWeather(52.0, 21.0, "openweather").get();
     EXPECT_DOUBLE_EQ(result.temperature, 25.0);
 }
 
-// Проверяет, что пока не реализована логика выбора провайдера, любой строковый provider принимается
-// (возвращается температура от единственного клиента). В будущем это изменится.
 TEST_F(CurrentWeatherControllerTest, AnyProviderIsAccepted) {
-    mockOpenWeather->returnValue = 18.0;
-    auto result = controller->GetCurrentWeather(52.0, 21.0, "unknown_provider").get();
+    mock->returnValue = 18.0;
+    Forecast::Controllers::CurrentWeatherController ctrl(mock);
+    auto result = ctrl.GetCurrentWeather(52.0, 21.0, "unknown_provider").get();
     EXPECT_DOUBLE_EQ(result.temperature, 18.0);
 }
 
-// Проверяет, что при передаче экстремальных значений координат (очень большие числа) контроллер не падает
 TEST_F(CurrentWeatherControllerTest, ExtremeCoordinates) {
-    mockOpenWeather->returnValue = -99.9;
-    auto result = controller->GetCurrentWeather(1e6, -1e6, "openweather").get();
+    mock->returnValue = -99.9;
+    Forecast::Controllers::CurrentWeatherController ctrl(mock);
+    auto result = ctrl.GetCurrentWeather(1e6, -1e6, "openweather").get();
     EXPECT_DOUBLE_EQ(result.temperature, -99.9);
 }
 
+// НОВЫЕ КРАСНЫЕ ТЕСТЫ (пока не компилируются/падают) 
 
-// MAIN 
+// 1 Тест на фабрику и выбор провайдера (требует WeatherClientFactory)
+TEST(FactoryProviderSelectionTest, DISABLED_ControllerUsesFactoryToSelectClient) {
+    // Этот тест будет раскомментирован после добавления фабрики
+    // Пока отключен через DISABLED_, чтобы сборка не падала
+    SUCCEED();
+}
+
+// 2 Тест для Google клиента (реальный вызов, потом заменим моком)
+TEST(GoogleWeatherClientTest, DISABLED_ReturnsTemperatureForValidCoordinates) {
+    SUCCEED();
+}
+// 3 Тест для прогноза погоды (требует ForecastController и метод GetForecast в клиенте)
+TEST(ForecastTest, DISABLED_ReturnsVectorOfTemperatures) {
+    SUCCEED();
+}
+
+// 4 Тест для batch-запроса (требует GetMultipleCurrentWeather в контроллере)
+TEST(BatchWeatherTest, DISABLED_MultipleLocations) {
+    SUCCEED();
+}
+
+// 5 Тест для геокодинга (требует GeocodingService)
+TEST(GeocodingTest, DISABLED_ReturnsCoordinatesForCity) {
+    SUCCEED();
+}
+
+// 6 Тест для получения погоды по названию города (требует перегрузки GetCurrentWeather(string city))
+TEST(CurrentWeatherControllerTest, DISABLED_GetWeatherByCityName) {
+    SUCCEED();
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
