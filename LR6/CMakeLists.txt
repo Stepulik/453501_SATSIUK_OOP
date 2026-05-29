@@ -10,6 +10,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Controllers)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Models/Weather)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Shared/Responses)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Utils)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Services)
 
 find_package(Crow REQUIRED)
 find_package(cpr REQUIRED)
@@ -23,6 +24,7 @@ add_executable(logistics_cpp
     Clients/OpenWeatherDataClient.cpp
     Clients/GoogleWeatherDataClient.cpp
     Clients/WeatherClientFactory.cpp
+    Services/GeocodingService.cpp
 )
 target_link_libraries(logistics_cpp
     Crow::Crow
@@ -39,6 +41,7 @@ add_executable(run_tests
     Clients/OpenWeatherDataClient.cpp
     Clients/GoogleWeatherDataClient.cpp
     Clients/WeatherClientFactory.cpp
+    Services/GeocodingService.cpp
 )
 target_link_libraries(run_tests
     GTest::GTest
