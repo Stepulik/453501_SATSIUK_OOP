@@ -2,6 +2,7 @@
 #include <future>
 #include <tuple>
 #include "../Clients/WeatherDataClient.h"
+#include "../Clients/WeatherClientFactory.h"
 #include "../Controllers/CurrentWeatherController.h"
 #include "../Utils/ApiCallException.h"
 
@@ -97,10 +98,21 @@ TEST_F(CurrentWeatherControllerTest, ExtremeCoordinates) {
 // НОВЫЕ КРАСНЫЕ ТЕСТЫ (пока не компилируются/падают) 
 
 // 1 Тест на фабрику и выбор провайдера (требует WeatherClientFactory)
-TEST(FactoryProviderSelectionTest, DISABLED_ControllerUsesFactoryToSelectClient) {
-    // Этот тест будет раскомментирован после добавления фабрики
-    // Пока отключен через DISABLED_, чтобы сборка не падала
-    SUCCEED();
+TEST(FactoryProviderSelectionTest, ControllerUsesFactoryToSelectClient) {
+    auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
+    auto mockOpen = std::make_shared<MockWeatherClient>();
+    auto mockGoogle = std::make_shared<MockWeatherClient>();
+    mockOpen->returnValue = 15.0;
+    mockGoogle->returnValue = 25.0;
+    factory->registerClient("openweather", [mockOpen]() { return mockOpen; });
+    factory->registerClient("google", [mockGoogle]() { return mockGoogle; });
+
+    Forecast::Controllers::CurrentWeatherController ctrl(factory);
+    auto tempOpen = ctrl.GetCurrentWeather(0, 0, "openweather").get().temperature;
+    auto tempGoogle = ctrl.GetCurrentWeather(0, 0, "google").get().temperature;
+
+    EXPECT_DOUBLE_EQ(tempOpen, 15.0);
+    EXPECT_DOUBLE_EQ(tempGoogle, 25.0);
 }
 
 // 2 Тест для Google клиента (реальный вызов, потом заменим моком)
