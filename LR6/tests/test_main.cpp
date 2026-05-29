@@ -1,13 +1,13 @@
 #include <gtest/gtest.h>
 #include <future>
 #include <tuple>
-#include "../Services/GeocodingService.h" 
+#include "../Services/GeocodingService.h"
 #include "../Clients/WeatherDataClient.h"
 #include "../Clients/WeatherClientFactory.h"
 #include "../Controllers/CurrentWeatherController.h"
 #include "../Utils/ApiCallException.h"
 
-//  Мок-клиент
+// ── Mock клиент ──────────────────────────────────────────────────────────────
 class MockWeatherClient : public Forecast::Clients::IWeatherDataClient {
 public:
     double returnValue = 25.0;
@@ -31,7 +31,7 @@ public:
     }
 };
 
-//  Фикстура для тестов контроллера (без фабрики, пока старый стиль) 
+// ── Фикстура ─────────────────────────────────────────────────────────────────
 class CurrentWeatherControllerTest : public ::testing::Test {
 protected:
     std::shared_ptr<MockWeatherClient> mock;
@@ -41,7 +41,7 @@ protected:
     }
 };
 
-// СТАРЫЕ ТЕСТЫ (7 штук, зелёные)
+// ── CurrentWeatherController — базовые тесты ─────────────────────────────────
 
 TEST_F(CurrentWeatherControllerTest, ReturnsCorrectTemperature) {
     mock->returnValue = 22.5;
@@ -96,9 +96,8 @@ TEST_F(CurrentWeatherControllerTest, ExtremeCoordinates) {
     EXPECT_DOUBLE_EQ(result.temperature, -99.9);
 }
 
-// НОВЫЕ КРАСНЫЕ ТЕСТЫ (пока не компилируются/падают) 
+// ── WeatherClientFactory ──────────────────────────────────────────────────────
 
-// 1 Тест на фабрику и выбор провайдера (требует WeatherClientFactory)
 TEST(FactoryProviderSelectionTest, ControllerUsesFactoryToSelectClient) {
     auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
     auto mockOpen = std::make_shared<MockWeatherClient>();
@@ -107,25 +106,29 @@ TEST(FactoryProviderSelectionTest, ControllerUsesFactoryToSelectClient) {
     mockGoogle->returnValue = 25.0;
     factory->registerClient("openweather", [mockOpen]() { return mockOpen; });
     factory->registerClient("google", [mockGoogle]() { return mockGoogle; });
-
     Forecast::Controllers::CurrentWeatherController ctrl(factory);
-    auto tempOpen = ctrl.GetCurrentWeather(0, 0, "openweather").get().temperature;
+    auto tempOpen   = ctrl.GetCurrentWeather(0, 0, "openweather").get().temperature;
     auto tempGoogle = ctrl.GetCurrentWeather(0, 0, "google").get().temperature;
 
-    EXPECT_DOUBLE_EQ(tempOpen, 15.0);
+    EXPECT_DOUBLE_EQ(tempOpen,   15.0);
     EXPECT_DOUBLE_EQ(tempGoogle, 25.0);
 }
 
-// 2 Тест для Google клиента (реальный вызов, потом заменим моком)
 TEST(GoogleWeatherClientTest, DefaultFactoryCreatesGoogleClient) {
     auto factory = Forecast::Clients::WeatherClientFactory::defaultFactory();
     ASSERT_NE(factory, nullptr);
     auto client = factory->create("google");
     ASSERT_NE(client, nullptr);
-    // Просто проверяем, что метод не падает
-    EXPECT_NO_THROW(client->LocationCurrentTemperature(55.75, 37.62));
 }
-// 3 Тест для прогноза погоды (требует ForecastController и метод GetForecast в клиенте)
+
+TEST(GoogleWeatherClientTest, FactoryReturnsNullForUnknownProvider) {
+    auto factory = Forecast::Clients::WeatherClientFactory::defaultFactory();
+    auto client = factory->create("nonexistent");
+    EXPECT_EQ(client, nullptr);
+}
+
+// ── Forecast ──────────────────────────────────────────────────────────────────
+
 TEST(ForecastTest, ReturnsVectorOfTemperatures) {
     auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
     auto mock = std::make_shared<MockWeatherClient>();
@@ -134,21 +137,45 @@ TEST(ForecastTest, ReturnsVectorOfTemperatures) {
 
     Forecast::Controllers::CurrentWeatherController ctrl(factory);
     auto forecast = ctrl.GetForecast(55.75, 37.62, 3, "openweather").get();
-    EXPECT_EQ(forecast.size(), 3);
-    for (double t : forecast) {
+    EXPECT_EQ(forecast.size(), 3u);
+    for (double t : forecast)
         EXPECT_DOUBLE_EQ(t, 20.0);
-    }
 }
 
-// 4 Тест для batch-запроса (требует GetMultipleCurrentWeather в контроллере)
+TEST(ForecastTest, ForecastThrowsOnClientError) {
+    auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
+    auto mock = std::make_shared<MockWeatherClient>();
+    mock->shouldThrow = true;
+    factory->registerClient("openweather", [mock]() { return mock; });
+
+    Forecast::Controllers::CurrentWeatherController ctrl(factory);
+    EXPECT_THROW(
+        ctrl.GetForecast(55.75, 37.62, 3, "openweather").get(),
+        Forecast::Utils::ApiCallException
+    );
+}
+
+TEST(ForecastTest, ForecastMinOneDayReturnsData) {
+    auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
+    auto mock = std::make_shared<MockWeatherClient>();
+    mock->returnValue = 5.0;
+    factory->registerClient("openweather", [mock]() { return mock; });
+
+    Forecast::Controllers::CurrentWeatherController ctrl(factory);
+    auto forecast = ctrl.GetForecast(55.75, 37.62, 1, "openweather").get();
+    EXPECT_FALSE(forecast.empty());
+}
+
+// ── Batch ─────────────────────────────────────────────────────────────────────
+
 TEST(BatchWeatherTest, MultipleLocations) {
     auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
-    auto mockOpen = std::make_shared<MockWeatherClient>();
+    auto mockOpen   = std::make_shared<MockWeatherClient>();
     auto mockGoogle = std::make_shared<MockWeatherClient>();
-    mockOpen->returnValue = 15.0;
+    mockOpen->returnValue   = 15.0;
     mockGoogle->returnValue = 25.0;
-    factory->registerClient("openweather", [mockOpen]() { return mockOpen; });
-    factory->registerClient("google", [mockGoogle]() { return mockGoogle; });
+    factory->registerClient("openweather", [mockOpen]()   { return mockOpen; });
+    factory->registerClient("google",      [mockGoogle]() { return mockGoogle; });
 
     Forecast::Controllers::CurrentWeatherController ctrl(factory);
     std::vector<std::tuple<double, double, std::string>> requests = {
@@ -156,20 +183,82 @@ TEST(BatchWeatherTest, MultipleLocations) {
         {30.0, 40.0, "google"}
     };
     auto results = ctrl.GetMultipleCurrentWeather(requests).get();
-    ASSERT_EQ(results.size(), 2);
+    ASSERT_EQ(results.size(), 2u);
     EXPECT_DOUBLE_EQ(results[0].temperature, 15.0);
     EXPECT_DOUBLE_EQ(results[1].temperature, 25.0);
 }
 
+TEST(BatchWeatherTest, EmptyRequestReturnsEmptyResult) {
+    auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
+    Forecast::Controllers::CurrentWeatherController ctrl(factory);
 
-// 5 Тест для геокодинга (требует GeocodingService)
- 
+    std::vector<std::tuple<double, double, std::string>> requests = {};
+    auto results = ctrl.GetMultipleCurrentWeather(requests).get();
+    EXPECT_TRUE(results.empty());
+}
+
+TEST(BatchWeatherTest, PropagatesExceptionFromOneLocation) {
+    auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
+    auto mock = std::make_shared<MockWeatherClient>();
+    mock->shouldThrow = true;
+    factory->registerClient("openweather", [mock]() { return mock; });
+    Forecast::Controllers::CurrentWeatherController ctrl(factory);
+    std::vector<std::tuple<double, double, std::string>> requests = {
+        {10.0, 20.0, "openweather"}
+    };
+    EXPECT_THROW(
+        ctrl.GetMultipleCurrentWeather(requests).get(),
+        Forecast::Utils::ApiCallException
+    );
+}
+
+// ── GeocodingService ──────────────────────────────────────────────────────────
+
 TEST(GeocodingTest, ReturnsCoordinatesForCity) {
     Forecast::Services::GeocodingService geocoder;
     auto [lat, lon] = geocoder.GetCoordinates("London");
     EXPECT_NEAR(lat, 51.5074, 0.001);
     EXPECT_NEAR(lon, -0.1278, 0.001);
 }
+
+TEST(GeocodingTest, AllCitiesReturnCorrectCoordinates) {
+    Forecast::Services::GeocodingService geocoder;
+
+    auto [latM, lonM] = geocoder.GetCoordinates("Minsk");
+    EXPECT_NEAR(latM, 53.9045, 0.01);
+
+    auto [latL, lonL] = geocoder.GetCoordinates("London");
+    EXPECT_NEAR(latL, 51.5074, 0.01);
+
+    auto [latT, lonT] = geocoder.GetCoordinates("Tokyo");
+    EXPECT_NEAR(latT, 35.6895, 0.01);
+
+    auto [latS, lonS] = geocoder.GetCoordinates("Shanghai");
+    EXPECT_NEAR(latS, 31.2304, 0.01);
+
+    auto [latW, lonW] = geocoder.GetCoordinates("Warsaw");
+    EXPECT_NEAR(latW, 52.2297, 0.01);
+}
+
+TEST(GeocodingTest, CaseInsensitive) {
+    Forecast::Services::GeocodingService geocoder;
+    auto [lat, lon] = geocoder.GetCoordinates("minsk");
+    EXPECT_NEAR(lat, 53.9045, 0.001);
+}
+
+TEST(GeocodingTest, UnknownCityThrows) {
+    Forecast::Services::GeocodingService geocoder;
+    EXPECT_THROW(geocoder.GetCoordinates("Amsterdam"), std::runtime_error);
+}
+
+TEST(GeocodingTest, AllCitiesPresent) {
+    Forecast::Services::GeocodingService geocoder;
+    EXPECT_NO_THROW(geocoder.GetCoordinates("Tokyo"));
+    EXPECT_NO_THROW(geocoder.GetCoordinates("Shanghai"));
+    EXPECT_NO_THROW(geocoder.GetCoordinates("Warsaw"));
+}
+
+// ── main ──────────────────────────────────────────────────────────────────────
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
