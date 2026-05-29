@@ -171,11 +171,6 @@ TEST(GeocodingTest, ReturnsCoordinatesForCity) {
     EXPECT_NEAR(lon, -0.1278, 0.001);
 }
 
-// 6 Тест для получения погоды по названию города (требует перегрузки GetCurrentWeather(string city))
-TEST(CurrentWeatherControllerTest, DISABLED_GetWeatherByCityName) {
-    SUCCEED();
-}
-
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
