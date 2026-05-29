@@ -1,0 +1,39 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Forecast API (C++)",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/weather": {
+      "get": {
+        "summary": "Get current weather",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "18.300231990440125"
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "-64.8251590359234"
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "400": { "description": "Invalid coordinates" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    }
+  }
+}
