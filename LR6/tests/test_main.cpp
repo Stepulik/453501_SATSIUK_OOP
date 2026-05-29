@@ -118,8 +118,13 @@ TEST(FactoryProviderSelectionTest, ControllerUsesFactoryToSelectClient) {
 }
 
 // 2 Тест для Google клиента (реальный вызов, потом заменим моком)
-TEST(GoogleWeatherClientTest, DISABLED_ReturnsTemperatureForValidCoordinates) {
-    SUCCEED();
+TEST(GoogleWeatherClientTest, DefaultFactoryCreatesGoogleClient) {
+    auto factory = Forecast::Clients::WeatherClientFactory::defaultFactory();
+    ASSERT_NE(factory, nullptr);
+    auto client = factory->create("google");
+    ASSERT_NE(client, nullptr);
+    // Просто проверяем, что метод не падает
+    EXPECT_NO_THROW(client->LocationCurrentTemperature(55.75, 37.62));
 }
 // 3 Тест для прогноза погоды (требует ForecastController и метод GetForecast в клиенте)
 TEST(ForecastTest, DISABLED_ReturnsVectorOfTemperatures) {
