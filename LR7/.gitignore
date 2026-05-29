@@ -1,0 +1,8 @@
+venv/
+pycache/
+*.pyc
+.env
+.pytest_cache/
+alembic/versions/
+*.db
+*.sqlite3
