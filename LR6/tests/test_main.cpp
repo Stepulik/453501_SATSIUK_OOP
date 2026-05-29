@@ -140,9 +140,26 @@ TEST(ForecastTest, ReturnsVectorOfTemperatures) {
 }
 
 // 4 Тест для batch-запроса (требует GetMultipleCurrentWeather в контроллере)
-TEST(BatchWeatherTest, DISABLED_MultipleLocations) {
-    SUCCEED();
+TEST(BatchWeatherTest, MultipleLocations) {
+    auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
+    auto mockOpen = std::make_shared<MockWeatherClient>();
+    auto mockGoogle = std::make_shared<MockWeatherClient>();
+    mockOpen->returnValue = 15.0;
+    mockGoogle->returnValue = 25.0;
+    factory->registerClient("openweather", [mockOpen]() { return mockOpen; });
+    factory->registerClient("google", [mockGoogle]() { return mockGoogle; });
+
+    Forecast::Controllers::CurrentWeatherController ctrl(factory);
+    std::vector<std::tuple<double, double, std::string>> requests = {
+        {10.0, 20.0, "openweather"},
+        {30.0, 40.0, "google"}
+    };
+    auto results = ctrl.GetMultipleCurrentWeather(requests).get();
+    ASSERT_EQ(results.size(), 2);
+    EXPECT_DOUBLE_EQ(results[0].temperature, 15.0);
+    EXPECT_DOUBLE_EQ(results[1].temperature, 25.0);
 }
+
 
 // 5 Тест для геокодинга (требует GeocodingService)
 TEST(GeocodingTest, DISABLED_ReturnsCoordinatesForCity) {
