@@ -30,3 +30,17 @@ target_link_libraries(logistics_cpp
 )
 
 enable_testing()
+
+add_executable(run_tests
+    tests/test_main.cpp
+    Api/WeatherApi.cpp
+    Clients/OpenWeatherDataClient.cpp
+)
+target_link_libraries(run_tests
+    GTest::GTest
+    GTest::Main
+    cpr::cpr
+    nlohmann_json::nlohmann_json
+    CURL::libcurl
+)
+add_test(NAME WeatherTests COMMAND run_tests)
