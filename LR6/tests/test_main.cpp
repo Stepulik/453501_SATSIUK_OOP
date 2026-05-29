@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <future>
 #include <tuple>
+#include "../Services/GeocodingService.h" 
 #include "../Clients/WeatherDataClient.h"
 #include "../Clients/WeatherClientFactory.h"
 #include "../Controllers/CurrentWeatherController.h"
@@ -162,8 +163,12 @@ TEST(BatchWeatherTest, MultipleLocations) {
 
 
 // 5 Тест для геокодинга (требует GeocodingService)
-TEST(GeocodingTest, DISABLED_ReturnsCoordinatesForCity) {
-    SUCCEED();
+ 
+TEST(GeocodingTest, ReturnsCoordinatesForCity) {
+    Forecast::Services::GeocodingService geocoder;
+    auto [lat, lon] = geocoder.GetCoordinates("London");
+    EXPECT_NEAR(lat, 51.5074, 0.001);
+    EXPECT_NEAR(lon, -0.1278, 0.001);
 }
 
 // 6 Тест для получения погоды по названию города (требует перегрузки GetCurrentWeather(string city))
