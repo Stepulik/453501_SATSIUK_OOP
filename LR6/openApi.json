@@ -2,35 +2,132 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Forecast API (C++)",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "paths": {
     "/api/v1/weather": {
       "get": {
-        "summary": "Get current weather",
+        "summary": "Current weather for coordinates or city",
         "parameters": [
           {
             "name": "lat",
             "in": "query",
             "required": false,
-            "schema": {
-              "type": "string",
-              "default": "18.300231990440125"
-            }
+            "schema": { "type": "number", "example": 51.5074 }
           },
           {
             "name": "lon",
             "in": "query",
             "required": false,
+            "schema": { "type": "number", "example": -0.1278 }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "description": "City name: Minsk, London, Tokyo, Shanghai, Warsaw",
+            "schema": { "type": "string", "example": "London" }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "description": "Weather provider: openweather or google",
             "schema": {
               "type": "string",
-              "default": "-64.8251590359234"
+              "enum": ["openweather", "google"],
+              "default": "openweather"
             }
           }
         ],
         "responses": {
           "200": { "description": "Successful response" },
-          "400": { "description": "Invalid coordinates" },
+          "400": { "description": "Missing or invalid coordinates/city" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/api/v1/forecast": {
+      "get": {
+        "summary": "Weather forecast for coordinates",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "number", "example": 51.5074 }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "number", "example": -0.1278 }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "description": "Number of forecast days (1-5)",
+            "schema": { "type": "integer", "default": 5, "minimum": 1, "maximum": 5 }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["openweather", "google"],
+              "default": "openweather"
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "400": { "description": "Missing coordinates" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/api/v1/weather/batch": {
+      "post": {
+        "summary": "Current temperature for multiple locations",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "locations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "lat": { "type": "number" },
+                        "lon": { "type": "number" },
+                        "provider": {
+                          "type": "string",
+                          "enum": ["openweather", "google"],
+                          "default": "openweather"
+                        }
+                      },
+                      "required": ["lat", "lon"]
+                    }
+                  }
+                }
+              },
+              "example": {
+                "locations": [
+                  { "lat": 53.9045, "lon": 27.5615, "provider": "openweather" },
+                  { "lat": 51.5074, "lon": -0.1278, "provider": "google" }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Successful response" },
+          "400": { "description": "Invalid request body" },
           "500": { "description": "Internal server error" }
         }
       }
