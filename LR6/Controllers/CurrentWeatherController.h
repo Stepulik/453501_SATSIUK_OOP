@@ -44,5 +44,20 @@ namespace Forecast::Controllers {
             }
             return client->GetForecast(latitude, longitude, days);
         }
+
+		std::future<std::vector<Models::Weather::CurrentWeather>> GetMultipleCurrentWeather(
+    	const std::vector<std::tuple<double, double, std::string>>& requests
+		) {
+    		return std::async(std::launch::async, [this, requests]() {
+        		std::vector<Models::Weather::CurrentWeather> results;
+        		for (const auto& req : requests) {
+        		    double lat = std::get<0>(req);
+        		    double lon = std::get<1>(req);
+        		    std::string provider = std::get<2>(req);
+        		    results.push_back(GetCurrentWeather(lat, lon, provider).get());
+        		}
+        		return results;
+    		});
+		}
     };
 }

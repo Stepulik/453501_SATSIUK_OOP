@@ -99,4 +99,46 @@ namespace Forecast::Api {
             return crow::response(500, error.dump());
         }
     }
+
+	void WeatherApi::MapBatchWeatherApi(crow::SimpleApp& app, std::shared_ptr<Controllers::CurrentWeatherController> controller) {
+    CROW_ROUTE(app, "/api/v1/weather/batch").methods(crow::HTTPMethod::Post)
+        ([controller](const crow::request& req) {
+            return HandleBatchWeather(controller, req);
+        });
+}
+
+	crow::response WeatherApi::HandleBatchWeather(
+		std::shared_ptr<Controllers::CurrentWeatherController> controller,
+		const crow::request& req
+	) {
+		try {
+			auto json = nlohmann::json::parse(req.body);
+			if (!json.contains("locations") || !json["locations"].is_array()) {
+				return crow::response(400, R"({"code":400,"message":"Invalid request: 'locations' array expected"})");
+			}
+			std::vector<std::tuple<double, double, std::string>> requests;
+			for (auto& item : json["locations"]) {
+				double lat = item.value("lat", 0.0);
+				double lon = item.value("lon", 0.0);
+				std::string provider = item.value("provider", "openweather");
+				requests.emplace_back(lat, lon, provider);
+			}
+			auto results = controller->GetMultipleCurrentWeather(requests).get();
+			nlohmann::json response;
+			response["code"] = 200;
+			response["message"] = "success";
+			nlohmann::json data = nlohmann::json::array();
+			for (const auto& w : results) {
+				data.push_back({{"temperature", w.temperature}});
+			}
+			response["data"] = data;
+			return crow::response(200, response.dump());
+		}
+		catch (const nlohmann::json::parse_error&) {
+			return crow::response(400, R"({"code":400,"message":"Invalid JSON"})");
+		}
+		catch (const std::exception& e) {
+			return crow::response(500, R"({"code":500,"message":"Internal server error"})");
+		}
+	}
 }

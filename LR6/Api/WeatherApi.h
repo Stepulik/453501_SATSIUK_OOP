@@ -8,12 +8,17 @@ namespace Forecast::Api {
     public:
         static void MapCurrentWeatherApi(crow::SimpleApp& app, std::shared_ptr<Controllers::CurrentWeatherController> controller);
         static void MapForecastApi(crow::SimpleApp& app, std::shared_ptr<Controllers::CurrentWeatherController> controller);
+        static void MapBatchWeatherApi(crow::SimpleApp& app, std::shared_ptr<Controllers::CurrentWeatherController> controller);
     private:
         static crow::response HandleGetCurrentWeather(
             std::shared_ptr<Controllers::CurrentWeatherController> controller,
             const crow::request& req
         );
         static crow::response HandleGetForecast(
+            std::shared_ptr<Controllers::CurrentWeatherController> controller,
+            const crow::request& req
+        );
+        static crow::response HandleBatchWeather(
             std::shared_ptr<Controllers::CurrentWeatherController> controller,
             const crow::request& req
         );

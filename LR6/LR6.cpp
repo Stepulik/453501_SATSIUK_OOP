@@ -14,7 +14,8 @@ int main() {
 
     Forecast::Api::WeatherApi::MapCurrentWeatherApi(app, weatherController);
     Forecast::Api::WeatherApi::MapForecastApi(app, weatherController);
-
+	Forecast::Api::WeatherApi::MapBatchWeatherApi(app, weatherController);
+	
     CROW_ROUTE(app, "/swagger/v1/swagger.json")
     ([] {
         std::ifstream ifs("openApi.json");
