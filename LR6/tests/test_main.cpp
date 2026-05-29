@@ -21,15 +21,13 @@ public:
         });
     }
 
-    // Новый метод для прогноза (пока нет в интерфейсе)
-    // Пока закомментирован, чтобы тест упал на этапе компиляции
-    /*
     std::future<std::vector<double>> GetForecast(double, double, int days) override {
         return std::async(std::launch::async, [this, days]() {
+            if (shouldThrow)
+                throw Forecast::Utils::ApiCallException(throwMessage);
             return std::vector<double>(days, returnValue);
         });
     }
-    */
 };
 
 //  Фикстура для тестов контроллера (без фабрики, пока старый стиль) 
@@ -130,11 +128,10 @@ TEST(GoogleWeatherClientTest, DefaultFactoryCreatesGoogleClient) {
 TEST(ForecastTest, ReturnsVectorOfTemperatures) {
     auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
     auto mock = std::make_shared<MockWeatherClient>();
-    mock->returnValue = 20.0;  // будет использовано в заглушке GetForecast
+    mock->returnValue = 20.0;
     factory->registerClient("openweather", [mock]() { return mock; });
 
-    Forecast::Controllers::CurrentWeatherController ctrl(factory); // или отдельный ForecastController
-    // Пока предполагаем, что метод GetForecast добавим в CurrentWeatherController
+    Forecast::Controllers::CurrentWeatherController ctrl(factory);
     auto forecast = ctrl.GetForecast(55.75, 37.62, 3, "openweather").get();
     EXPECT_EQ(forecast.size(), 3);
     for (double t : forecast) {
