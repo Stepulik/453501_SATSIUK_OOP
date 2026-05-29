@@ -18,36 +18,42 @@ namespace Forecast::Api {
 	}
 
 	crow::response WeatherApi::HandleGetCurrentWeather(
-		std::shared_ptr<Controllers::CurrentWeatherController> controller,
-		const crow::request& req
+    std::shared_ptr<Controllers::CurrentWeatherController> controller,
+    const crow::request& req
 	) {
-		std::string lat_str = req.url_params.get("lat") != nullptr ? req.url_params.get("lat") : "18.300231990440128";
-		std::string lon_str = req.url_params.get("lon") != nullptr ? req.url_params.get("lon") : "-64.8251590359234";
+    	std::string lat_str = req.url_params.get("lat") != nullptr ? req.url_params.get("lat") : "18.300231990440128";
+    	std::string lon_str = req.url_params.get("lon") != nullptr ? req.url_params.get("lon") : "-64.8251590359234";
 
-		try {
-			double latitude = std::stod(lat_str);
-			double longitude = std::stod(lon_str);
-			auto weather = controller->GetCurrentWeather(latitude, longitude).get();
-			nlohmann::json data;
-			data["temperature"] = weather.temperature;
-			nlohmann::json response;
-			response["code"] = 200;
-			response["message"] = "success";
-			response["data"] = data;
-			return crow::response(200,"application/json" ,response.dump());
-		}
-		catch (const std::invalid_argument&) {
-			nlohmann::json error = { {"code", 400}, {"message", "invalid coordinates"} };
-			return crow::response(400, error.dump());
-		}
-		catch (const Utils::ApiCallException& e) {
-			std::cerr << "CRITICAL ERROR: " << e.what() << std::endl;
-			nlohmann::json err = { {"code", 500}, {"message", e.what()} };
-			return crow::response(500, err.dump());
-		}
-		catch (const std::exception& e) {
-			nlohmann::json error = { {"code", 500}, {"message", "internal server error"} };
-			return crow::response(500, error.dump());
-		}
+    	try {
+    	    double latitude = std::stod(lat_str);
+    	    double longitude = std::stod(lon_str);
+        
+    	    // НОВАЯ СТРОКА:
+    	    std::string provider = req.url_params.get("provider") != nullptr ? req.url_params.get("provider") : "openweather";
+        
+    	    // ИСПРАВЛЕННЫЙ ВЫЗОВ:
+    	    auto weather = controller->GetCurrentWeather(latitude, longitude, provider).get();
+        
+    	    nlohmann::json data;
+    	    data["temperature"] = weather.temperature;
+    	    nlohmann::json response;
+    	    response["code"] = 200;
+    	    response["message"] = "success";
+    	    response["data"] = data;
+    	    return crow::response(200, "application/json", response.dump());
+    	}
+    	catch (const std::invalid_argument&) {
+    	    nlohmann::json error = { {"code", 400}, {"message", "invalid coordinates"} };
+    	    return crow::response(400, error.dump());
+    	}
+    	catch (const Utils::ApiCallException& e) {
+    	    std::cerr << "CRITICAL ERROR: " << e.what() << std::endl;
+    	    nlohmann::json err = { {"code", 500}, {"message", e.what()} };
+    	    return crow::response(500, err.dump());
+    	}
+    	catch (const std::exception& e) {
+    	    nlohmann::json error = { {"code", 500}, {"message", "internal server error"} };
+    	    return crow::response(500, error.dump());
+    	}
 	}
 }
