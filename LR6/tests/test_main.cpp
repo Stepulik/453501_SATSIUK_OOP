@@ -81,11 +81,13 @@ TEST_F(CurrentWeatherControllerTest, ExplicitProviderOpenWeather) {
     EXPECT_DOUBLE_EQ(result.temperature, 25.0);
 }
 
-TEST_F(CurrentWeatherControllerTest, AnyProviderIsAccepted) {
+TEST_F(CurrentWeatherControllerTest, UnknownProviderThrowsException) {
     mock->returnValue = 18.0;
     Forecast::Controllers::CurrentWeatherController ctrl(mock);
-    auto result = ctrl.GetCurrentWeather(52.0, 21.0, "unknown_provider").get();
-    EXPECT_DOUBLE_EQ(result.temperature, 18.0);
+    EXPECT_THROW(
+        ctrl.GetCurrentWeather(52.0, 21.0, "unknown_provider").get(),
+        std::runtime_error
+    );
 }
 
 TEST_F(CurrentWeatherControllerTest, ExtremeCoordinates) {
