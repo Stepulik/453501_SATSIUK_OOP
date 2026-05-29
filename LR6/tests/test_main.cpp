@@ -127,8 +127,19 @@ TEST(GoogleWeatherClientTest, DefaultFactoryCreatesGoogleClient) {
     EXPECT_NO_THROW(client->LocationCurrentTemperature(55.75, 37.62));
 }
 // 3 Тест для прогноза погоды (требует ForecastController и метод GetForecast в клиенте)
-TEST(ForecastTest, DISABLED_ReturnsVectorOfTemperatures) {
-    SUCCEED();
+TEST(ForecastTest, ReturnsVectorOfTemperatures) {
+    auto factory = std::make_shared<Forecast::Clients::WeatherClientFactory>();
+    auto mock = std::make_shared<MockWeatherClient>();
+    mock->returnValue = 20.0;  // будет использовано в заглушке GetForecast
+    factory->registerClient("openweather", [mock]() { return mock; });
+
+    Forecast::Controllers::CurrentWeatherController ctrl(factory); // или отдельный ForecastController
+    // Пока предполагаем, что метод GetForecast добавим в CurrentWeatherController
+    auto forecast = ctrl.GetForecast(55.75, 37.62, 3, "openweather").get();
+    EXPECT_EQ(forecast.size(), 3);
+    for (double t : forecast) {
+        EXPECT_DOUBLE_EQ(t, 20.0);
+    }
 }
 
 // 4 Тест для batch-запроса (требует GetMultipleCurrentWeather в контроллере)
