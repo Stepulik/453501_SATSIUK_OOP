@@ -21,6 +21,7 @@ add_executable(logistics_cpp
     LR6.cpp
     Api/WeatherApi.cpp
     Clients/OpenWeatherDataClient.cpp
+    Clients/GoogleWeatherDataClient.cpp
     Clients/WeatherClientFactory.cpp
 )
 target_link_libraries(logistics_cpp
@@ -36,6 +37,7 @@ add_executable(run_tests
     tests/test_main.cpp
     Api/WeatherApi.cpp
     Clients/OpenWeatherDataClient.cpp
+    Clients/GoogleWeatherDataClient.cpp
     Clients/WeatherClientFactory.cpp
 )
 target_link_libraries(run_tests

@@ -21,6 +21,8 @@ namespace Forecast::Clients {
             return nullptr;
         }
 
+        static std::shared_ptr<WeatherClientFactory> defaultFactory();
+
     private:
         std::unordered_map<std::string, Creator> creators;
     };
